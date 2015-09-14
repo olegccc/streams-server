@@ -1,0 +1,3 @@
+interface IRecord {
+    id: string;
+}
