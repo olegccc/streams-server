@@ -4,6 +4,7 @@ import { StreamHandler } from '../modules/StreamHandler';
 import { Constants } from '../interfaces/Constants';
 import _ = require('lodash');
 import { TestDataChannel } from './TestDataChannel';
+import { TestDataChannelUpdates } from './TestDataChannelUpdates';
 
 describe('Stream Handler', () => {
     it('should handle request to get all record ids', () => {
@@ -108,8 +109,55 @@ describe('Stream Handler', () => {
     });
 
     describe('Events', () => {
-        it('should notify on record updated', () => {
+        it('should notify on record updated and handle versions', () => {
+            var testChannel = new TestDataChannel([]);
+            var handler = new StreamHandler(testChannel);
+            var updates = new TestDataChannelUpdates();
+            testChannel.subscribe(updates);
+            var request: IRequest = <any>{};
 
+            request.command = Constants.COMMAND_VERSION;
+            var response = handler.processRequest(request);
+            expect(response.version).toBeDefined();
+            var initialVersion = response.version;
+
+            var record: IRecord = {
+                id: '123',
+                field1: '456'
+            };
+            request = <any>{};
+            request.command = Constants.COMMAND_CREATE;
+            request.record = record;
+            response = handler.processRequest(request);
+            expect(response.error).not.toBeDefined();
+            expect(updates.getUpdates().length).toBe(1);
+            request = <any>{};
+            request.command = Constants.COMMAND_VERSION;
+            response = handler.processRequest(request);
+            expect(response.version).toBeDefined();
+            expect(response.version).not.toBe(initialVersion);
+            var secondVersion = response.version;
+            request = <any>{};
+            request.command = Constants.COMMAND_UPDATE;
+            request.record = {
+                id: record.id,
+                field2: '789'
+            };
+            request.echo = false;
+            handler.processRequest(request);
+            request = <any>{};
+            request.command = Constants.COMMAND_VERSION;
+            response = handler.processRequest(request);
+            expect(response.version).toBeDefined();
+            expect(response.version).not.toBe(initialVersion);
+            expect(response.version).not.toBe(secondVersion);
+            request = <any>{};
+            request.command = Constants.COMMAND_CHANGES;
+            request.version = secondVersion;
+            response = handler.processRequest(request);
+            expect(response.changes).toBeDefined();
+            expect(response.changes.length).toBe(1);
+            expect(response.changes[0].type).toBe(Constants.UPDATE_CHANGED);
         });
     });
 });

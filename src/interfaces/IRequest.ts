@@ -3,4 +3,5 @@ interface IRequest {
     id: string;
     record: IRecord;
     echo: boolean;
+    version: number;
 }

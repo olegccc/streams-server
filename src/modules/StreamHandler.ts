@@ -25,6 +25,10 @@ export class StreamHandler {
                     return this.processCreate(request.record);
                 case Constants.COMMAND_DELETE:
                     return this.processDelete(request.id);
+                case Constants.COMMAND_VERSION:
+                    return this.processVersion();
+                case Constants.COMMAND_CHANGES:
+                    return this.processChanges(request.version);
             }
         } catch (error) {
             return StreamHandler.createError(error.toString());
@@ -75,5 +79,17 @@ export class StreamHandler {
     private processDelete(id: string): IResponse {
         this.dataChannel.remove(id);
         return <any>{};
+    }
+
+    private processVersion(): IResponse {
+        var ret: IResponse = <any>{};
+        ret.version = this.dataChannel.getVersion();
+        return ret;
+    }
+
+    private processChanges(version: number): IResponse {
+        var ret: IResponse = <any>{};
+        ret.changes = this.dataChannel.getUpdates(version);
+        return ret;
     }
 }

@@ -3,6 +3,7 @@
 ///<reference path='../interfaces/IDataChannelUpdates.ts'/>
 
 import _ = require('lodash');
+import { Constants } from '../interfaces/Constants';
 
 export class TestDataChannel implements IDataChannel {
 
@@ -15,6 +16,7 @@ export class TestDataChannel implements IDataChannel {
         this.records = records;
         this.updates = [];
         this.subscriptionId = 1;
+        this.subscriptions = {};
     }
 
     read(id:string): IRecord {
@@ -29,6 +31,7 @@ export class TestDataChannel implements IDataChannel {
         }
 
         _.merge(toMerge, record);
+        this.onChange(Constants.UPDATE_CHANGED, record.id);
 
         return toMerge;
     }
@@ -38,6 +41,7 @@ export class TestDataChannel implements IDataChannel {
             throw Error("Record already exists");
         }
         this.records.push(record);
+        this.onChange(Constants.UPDATE_CREATED, record.id);
     }
 
     getIds(): string[] {
@@ -58,11 +62,12 @@ export class TestDataChannel implements IDataChannel {
             throw Error("Cannot find record");
         }
         this.records.splice(index, 1);
+        this.onChange(Constants.UPDATE_DELETED, id);
     }
 
     subscribe(updates: IDataChannelUpdates): string {
         var subscriptionId = this.subscriptionId++;
-        this.subscriptions[subscriptionId] = updates;
+        this.subscriptions[subscriptionId.toString()] = updates;
         return subscriptionId.toString();
     }
 
