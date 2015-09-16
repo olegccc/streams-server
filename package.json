@@ -38,5 +38,8 @@
     "jasmine": "^2.3.2",
     "lodash": "^3.9.3",
     "open": "0.0.5"
+  },
+  "dependencies": {
+    "lodash": "^3.10.1"
   }
 }

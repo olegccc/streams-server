@@ -18,6 +18,9 @@
     }
   },
   "watch": {
+    "options": {
+      "atBegin": true
+    },
     "build": {
       "files": [
         "src/**/*.ts"
