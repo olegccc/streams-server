@@ -2,13 +2,13 @@
 ///<reference path='IRecord.ts'/>
 
 interface IDataChannel {
-    getIds: () => string[];
+    getIds: (filter?: any) => string[];
     read: (id: string) => IRecord;
     update: (record: IRecord) => IRecord;
     create: (record: IRecord) => void;
     remove: (id: string) => void;
-    subscribe: (updates: IDataChannelUpdates) => string;
+    subscribe: (updates: IDataChannelUpdates, filter?: any) => string;
     unsubscribe: (id: string) => void;
     getVersion: () => number;
-    getUpdates: (from: number) => IUpdate[];
+    getUpdates: (from: number, filter?: any) => IUpdate[];
 }
