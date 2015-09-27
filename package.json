@@ -36,8 +36,9 @@
     "grunt-ts": "^4.1.2",
     "grunt-tsd": "^0.1.0",
     "jasmine": "^2.3.2",
-    "lodash": "^3.9.3",
-    "open": "0.0.5"
+    "nedb": "^1.2.1",
+    "open": "0.0.5",
+    "typescript": "^1.6.2"
   },
   "dependencies": {
     "lodash": "^3.10.1"

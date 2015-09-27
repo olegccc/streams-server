@@ -12,29 +12,36 @@ export class StreamHandler {
         this.dataChannel = dataChannel;
     }
 
-    processRequest(request: IRequest): IResponse {
+    processRequest(request: IRequest, callback: (response: IResponse) => void){
         try {
             switch (request.command) {
                 case Constants.COMMAND_IDS:
-                    return this.processCommandIds();
+                    this.processCommandIds(callback);
+                    return;
                 case Constants.COMMAND_READ:
-                    return this.processRead(request.id);
+                    this.processRead(request.id, callback);
+                    return;
                 case Constants.COMMAND_UPDATE:
-                    return this.processUpdate(request.record, request.echo);
+                    this.processUpdate(request.record, request.echo, callback);
+                    return;
                 case Constants.COMMAND_CREATE:
-                    return this.processCreate(request.record);
+                    this.processCreate(request.record, callback);
+                    return;
                 case Constants.COMMAND_DELETE:
-                    return this.processDelete(request.id);
+                    this.processDelete(request.id, callback);
+                    return;
                 case Constants.COMMAND_VERSION:
-                    return this.processVersion();
+                    this.processVersion(callback);
+                    return;
                 case Constants.COMMAND_CHANGES:
-                    return this.processChanges(request.version);
+                    this.processChanges(request.version, callback);
+                    return;
             }
         } catch (error) {
-            return StreamHandler.createError(error.toString());
+            callback(StreamHandler.createError(error.toString()));
         }
 
-        return StreamHandler.createError("Unknown command");
+        callback(StreamHandler.createError("Unknown command"));
     }
 
     private static createError(message: string): IResponse {
@@ -43,53 +50,88 @@ export class StreamHandler {
         return ret;
     }
 
-    private processCommandIds(): IResponse {
-        var ret: IResponse = <any>{};
-        ret.ids = this.dataChannel.getIds();
-        return ret;
+    private processCommandIds(callback: (response: IResponse) => void): void {
+        this.dataChannel.getIds(null, (error: Error, ids) => {
+            if (error) {
+                callback(StreamHandler.createError(error.toString()));
+                return;
+            }
+            var ret: IResponse = <any>{};
+            ret.ids = ids;
+            callback(ret);
+        });
     }
 
-    private processRead(id: string): IResponse {
-        var record = this.dataChannel.read(id);
+    private processRead(id: string, callback: (response: IResponse) => void): void {
 
-        if (record === null) {
-            return StreamHandler.createError("Unknown record");
-        }
-
-        var ret: IResponse = <any>{};
-        ret.record = record;
-        return ret;
+        this.dataChannel.read(id, (error: Error, record: IRecord) => {
+            if (error) {
+                callback(StreamHandler.createError(error.toString()));
+                return;
+            }
+            var ret: IResponse = <any>{};
+            ret.record = record;
+            callback(ret);
+        });
     }
 
-    private processUpdate(record: IRecord, echo: boolean): IResponse {
-        var updated = this.dataChannel.update(record);
-        if (!updated) {
-            return StreamHandler.createError("Unknown record");
-        }
-        var ret: IResponse = <any>{};
-        ret.record = echo ? updated : <any>true;
-        return ret;
+    private processUpdate(record: IRecord, echo: boolean, callback: (response: IResponse) => void): void {
+
+        this.dataChannel.update(record, (error: Error, record: IRecord) => {
+            if (error) {
+                callback(StreamHandler.createError(error.toString()));
+                return;
+            }
+            var ret: IResponse = <any>{};
+            ret.record = echo ? record : <any>true;
+            callback(ret);
+        });
     }
 
-    private processCreate(record: IRecord): IResponse {
-        this.dataChannel.create(record);
-        return <any>{};
+    private processCreate(record: IRecord, callback: (response: IResponse) => void): void {
+
+        this.dataChannel.create(record, (error: Error, record: IRecord) => {
+            if (error) {
+                callback(StreamHandler.createError(error.toString()));
+                return;
+            }
+            callback(<any>{});
+        });
     }
 
-    private processDelete(id: string): IResponse {
-        this.dataChannel.remove(id);
-        return <any>{};
+    private processDelete(id: string, callback: (response: IResponse) => void): void {
+
+        this.dataChannel.remove(id, (error: Error) => {
+            if (error) {
+                callback(StreamHandler.createError(error.toString()));
+                return;
+            }
+            callback(<any>{});
+        });
     }
 
-    private processVersion(): IResponse {
-        var ret: IResponse = <any>{};
-        ret.version = this.dataChannel.getVersion();
-        return ret;
+    private processVersion(callback: (response: IResponse) => void): void {
+        this.dataChannel.getVersion((error: Error, version: string) => {
+            if (error) {
+                callback(StreamHandler.createError(error.toString()));
+                return;
+            }
+            var ret: IResponse = <any>{};
+            ret.version = version;
+            callback(ret);
+        });
     }
 
-    private processChanges(version: number): IResponse {
-        var ret: IResponse = <any>{};
-        ret.changes = this.dataChannel.getUpdates(version);
-        return ret;
+    private processChanges(version: string, callback: (response: IResponse) => void): void {
+
+        this.dataChannel.getUpdates(version, null, (error: Error, updates: IUpdate[]) => {
+            if (error) {
+                callback(StreamHandler.createError(error.toString()));
+                return;
+            }
+            var ret: IResponse = <any>{};
+            ret.changes = updates;
+            callback(ret);
+        });
     }
 }
