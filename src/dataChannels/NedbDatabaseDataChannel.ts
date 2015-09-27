@@ -1,6 +1,7 @@
 ///<reference path='../interfaces/IRecord.ts'/>
 ///<reference path='../interfaces/IDataChannel.ts'/>
 ///<reference path='../interfaces/IDataChannelUpdates.ts'/>
+///<reference path='../interfaces/IQueryOptions.ts'/>
 
 import Datastore = require('nedb');
 import _ = require('lodash');
@@ -34,10 +35,25 @@ export class NedbDatabaseDataChannel implements IDataChannel {
         return query;
     }
 
-    getIds(filter: any, callback: (error: Error, ids?: string[]) => void) {
-        this.db.find(this.getQuery(filter), {
+    getIds(filter: any, options: IQueryOptions, callback: (error: Error, ids?: string[]) => void) {
+
+        var find = this.db.find(this.getQuery(filter), {
             _id: 1
-        }, (err, docs) => {
+        });
+
+        if (options) {
+            if (options.order) {
+                find = find.sort(options.order);
+            }
+            if (options.from) {
+                find = find.skip(options.from);
+            }
+            if (options.count) {
+                find = find.limit(options.count);
+            }
+        }
+
+        find.exec((err, docs) => {
             if (err) {
                 callback(err);
                 return;
@@ -149,7 +165,7 @@ export class NedbDatabaseDataChannel implements IDataChannel {
         });
     }
 
-    getUpdates(from: string, filter: any, callback: (error: Error, updates?: IUpdate[]) => void) {
+    getUpdates(from: string, filter: any, options: IQueryOptions, callback: (error: Error, updates?: IUpdate[]) => void) {
         var query: any = {};
         if (from) {
             query.created = {
@@ -177,23 +193,19 @@ export class NedbDatabaseDataChannel implements IDataChannel {
                 callback(error, updates);
             }
 
-            if (filter) {
-                var query = this.getQuery(filter);
-                query._id = {
-                    $in: _.map(docs, (doc: any) => doc.id)
-                };
-                this.db.find(query, { _id: 1 }, (error: Error, ids: any[]) => {
+            if (!docs.length || (!filter && !options)) {
+                prepareUpdates(docs);
+            } else {
+                this.getIds(filter, options, (error: Error, ids: string[]) => {
                     var idsMap = {};
-                    _.each(ids, (id) => {
-                        idsMap[id._id] = true;
+                    _.each(ids, (id: string) => {
+                        idsMap[id] = true;
                     });
                     docs = _.filter(docs, (doc) => {
                         return idsMap.hasOwnProperty(doc.id);
                     });
                     prepareUpdates(docs);
                 });
-            } else {
-                prepareUpdates(docs);
             }
         });
     }

@@ -51,7 +51,7 @@ export class StreamHandler {
     }
 
     private processCommandIds(callback: (response: IResponse) => void): void {
-        this.dataChannel.getIds(null, (error: Error, ids) => {
+        this.dataChannel.getIds(null, null, (error: Error, ids) => {
             if (error) {
                 callback(StreamHandler.createError(error.toString()));
                 return;
@@ -124,7 +124,7 @@ export class StreamHandler {
 
     private processChanges(version: string, callback: (response: IResponse) => void): void {
 
-        this.dataChannel.getUpdates(version, null, (error: Error, updates: IUpdate[]) => {
+        this.dataChannel.getUpdates(version, null, null, (error: Error, updates: IUpdate[]) => {
             if (error) {
                 callback(StreamHandler.createError(error.toString()));
                 return;

@@ -1,6 +1,7 @@
 ///<reference path='../interfaces/IRecord.ts'/>
 ///<reference path='../interfaces/IDataChannel.ts'/>
 ///<reference path='../interfaces/IDataChannelUpdates.ts'/>
+///<reference path='../interfaces/IQueryOptions.ts'/>
 
 import _ = require('lodash');
 import { Constants } from '../interfaces/Constants';
@@ -100,14 +101,35 @@ export class MemoryDataChannel implements IDataChannel {
         return false;
     }
 
-    getIds(filter: any, callback: (error: Error, ids?: string[]) => void): void {
-        var ids = [];
+    getIds(filter: any, options: IQueryOptions, callback: (error: Error, ids?: string[]) => void): void {
+        var records = [];
         this.records.forEach((record: IRecord) => {
             if (MemoryDataChannel.filterRecord(record, filter)) {
-                ids.push(record.id);
+                records.push(record);
             }
         });
-        callback(null, ids);
+        if (options) {
+            if (options.order) {
+                var iteratees = [];
+                var orders = [];
+                for (var field in options.order) {
+                    if (!options.order.hasOwnProperty(field)) {
+                        continue;
+                    }
+                    var order = options.order[field];
+                    iteratees.push(field);
+                    orders.push(order > 0 ? 'asc': 'desc');
+                }
+                records = _.sortByOrder(records, iteratees, orders);
+            }
+            if (options.from) {
+                records = _.drop(records, options.from);
+            }
+            if (options.count) {
+                records = _.take(records, options.count);
+            }
+        }
+        callback(null, _.map(records, (record: IRecord) => record.id ));
     }
 
     getAllRecords(): IRecord[] {
@@ -131,10 +153,22 @@ export class MemoryDataChannel implements IDataChannel {
         callback(null, this.updates.length.toString());
     }
 
-    getUpdates(from: string, filter: any, callback: (error: Error, updates?: IUpdate[]) => void): void {
+    getUpdates(from: string, filter: any, options: IQueryOptions, callback: (error: Error, updates?: IUpdate[]) => void): void {
         var updates = from ? _.drop(this.updates, parseInt(from)) : this.updates;
-        updates = _.filter(updates, (update: IUpdate) => MemoryDataChannel.filterRecord(this.recordMap[update.id], filter));
-        callback(null, updates);
+
+        if (!updates.length || (!filter && !options)) {
+            callback(null, updates);
+            return;
+        }
+
+        this.getIds(filter, options, (error: Error, ids: string[]) => {
+            var idsMap = {};
+            _.each(ids, (id: string) => {
+                idsMap[id] = true;
+            });
+            updates = _.filter(updates, (update: IUpdate) => idsMap.hasOwnProperty(update.id));
+            callback(null, updates);
+        });
     }
 
     private onChange(type:number, id:string):void {

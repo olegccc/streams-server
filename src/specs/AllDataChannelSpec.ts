@@ -13,7 +13,7 @@ function testDatabase(create: () => IDataChannel) {
             };
             db.create(record, (error: Error, record?: IRecord) => {
                 expect(error).toBeFalsy();
-                db.getIds(null, (error: Error, ids: string[]) => {
+                db.getIds(null, null, (error: Error, ids: string[]) => {
                     expect(error).toBeFalsy();
                     expect(record.id).toBeDefined();
                     expect(record['_id']).not.toBeDefined();
@@ -37,12 +37,12 @@ function testDatabase(create: () => IDataChannel) {
                         expect(error).toBeFalsy();
                         expect(record['_id']).not.toBeDefined();
                         expect(record['field']).toBe('field2');
-                        db.getIds(null, (error: Error, ids: string[]) => {
+                        db.getIds(null, null, (error: Error, ids: string[]) => {
                             expect(error).toBeFalsy();
                             expect(record.id).toBeDefined();
                             expect(record['_id']).not.toBeDefined();
                             expect(ids).toEqual(['id1']);
-                            db.getUpdates(version, null, (error: Error, updates?: IUpdate[]) => {
+                            db.getUpdates(version, null, null, (error: Error, updates?: IUpdate[]) => {
                                 expect(error).toBeFalsy();
                                 expect(updates.length).toBe(2);
                                 expect(updates[0].id).toBe('id1');
@@ -85,7 +85,7 @@ function testDatabase(create: () => IDataChannel) {
                 var id = record.id;
                 db.remove(id, (error: Error) => {
                     expect(error).toBeFalsy();
-                    db.getUpdates(null, null, (error: Error, updates?: IUpdate[]) => {
+                    db.getUpdates(null, null, null, (error: Error, updates?: IUpdate[]) => {
                         expect(error).toBeFalsy();
                         expect(updates.length).toBe(2);
                         expect(updates[0].id).toBe(id);
@@ -124,11 +124,11 @@ function testDatabase(create: () => IDataChannel) {
                         field: 'a.c'
                     };
 
-                    db.getIds(filter, (error: Error, ids: string[]) => {
+                    db.getIds(filter, null, (error: Error, ids: string[]) => {
                         expect(error).toBeFalsy();
                         expect(ids).toEqual([record1.id]);
 
-                        db.getUpdates(null, filter, (error: Error, updates: IUpdate[]) => {
+                        db.getUpdates(null, filter, null, (error: Error, updates: IUpdate[]) => {
                             expect(error).toBeFalsy();
                             expect(updates.length).toBe(1);
                             if (updates.length != 1) {
@@ -142,6 +142,71 @@ function testDatabase(create: () => IDataChannel) {
                                     done();
                                 });
                             }
+                        });
+                    });
+                });
+            });
+        });
+    });
+
+    describe('Limited Queries', () => {
+        it('should return only specified count of records', (done) => {
+            var record1: any = {
+                id: 'id1',
+                field: 'abc'
+            };
+            var record2: any = {
+                id: 'id2',
+                field: 'def'
+            };
+
+            var db = create();
+
+            db.create(record1, (error: Error) => {
+                expect(error).toBeFalsy();
+                db.create(record2, (error:Error) => {
+                    expect(error).toBeFalsy();
+
+                    db.getIds(null, null, (error: Error, ids: string[]) => {
+                        expect(error).toBeFalsy();
+                        expect(ids.length).toBe(2);
+
+                        db.getUpdates(null, null, null, (error: Error, updates: IUpdate[]) => {
+                            expect(error).toBeFalsy();
+                            expect(updates.length).toBe(2);
+
+                            var options: IQueryOptions = {
+                                from: 0,
+                                count: 1,
+                                order: {
+                                    field: 1
+                                }
+                            };
+
+                            db.getIds(null, options, (error: Error, ids: string[]) => {
+                                expect(error).toBeFalsy();
+                                expect(ids).toEqual([record1.id]);
+
+                                db.getUpdates(null, null, options, (error: Error, updates: IUpdate[]) => {
+                                    expect(error).toBeFalsy();
+                                    expect(updates.length).toBe(1);
+                                    expect(updates[0].id).toBe(record1.id);
+
+                                    options.order.field = -1;
+
+                                    db.getIds(null, options, (error: Error, ids: string[]) => {
+                                        expect(error).toBeFalsy();
+                                        expect(ids).toEqual([record2.id]);
+
+                                        db.getUpdates(null, null, options, (error: Error, updates: IUpdate[]) => {
+                                            expect(error).toBeFalsy();
+                                            expect(updates.length).toBe(1);
+                                            expect(updates[0].id).toBe(record2.id);
+                                            done();
+                                        });
+                                    });
+                                });
+                            });
                         });
                     });
                 });
