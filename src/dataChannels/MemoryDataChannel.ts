@@ -1,7 +1,4 @@
-///<reference path='../interfaces/IRecord.ts'/>
 ///<reference path='../interfaces/IDataChannel.ts'/>
-///<reference path='../interfaces/IDataChannelUpdates.ts'/>
-///<reference path='../interfaces/IQueryOptions.ts'/>
 
 import _ = require('lodash');
 import { Constants } from '../interfaces/Constants';

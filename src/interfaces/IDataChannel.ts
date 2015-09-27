@@ -1,4 +1,4 @@
-///<reference path='IDataChannelUpdates.ts'/>
+///<reference path='IUpdate.ts'/>
 ///<reference path='IRecord.ts'/>
 ///<reference path='IQueryOptions.ts'/>
 

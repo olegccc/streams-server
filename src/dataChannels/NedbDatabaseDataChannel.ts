@@ -1,7 +1,4 @@
-///<reference path='../interfaces/IRecord.ts'/>
 ///<reference path='../interfaces/IDataChannel.ts'/>
-///<reference path='../interfaces/IDataChannelUpdates.ts'/>
-///<reference path='../interfaces/IQueryOptions.ts'/>
 
 import Datastore = require('nedb');
 import _ = require('lodash');
