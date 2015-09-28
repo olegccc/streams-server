@@ -8,6 +8,7 @@ export class MemoryDataChannel implements IDataChannel {
     private records: IRecord[];
     private recordMap: { [key: string] : IRecord };
     private updates: IUpdate[];
+    private versionId: number = 0;
 
     constructor(records?: IRecord[]) {
         this.records = records || [];
@@ -16,6 +17,10 @@ export class MemoryDataChannel implements IDataChannel {
         _.each(this.records, (record: IRecord) => {
             this.recordMap[record.id] = record;
         });
+    }
+
+    private getVersionId(): number {
+        return (Date.now()*1000) + ((this.versionId++) % 1000);
     }
 
     read(id: string, callback: (error: Error, record?: IRecord) => void): void {
@@ -31,6 +36,7 @@ export class MemoryDataChannel implements IDataChannel {
         }
 
         _.merge(toMerge, record);
+        toMerge.version = this.getVersionId();
         this.onChange(Constants.UPDATE_CHANGED, record.id);
 
         callback(null, toMerge);
@@ -50,6 +56,7 @@ export class MemoryDataChannel implements IDataChannel {
             callback(new Error("Record already exists"), null);
             return;
         }
+        record.version = this.getVersionId();
         this.records.push(record);
         this.recordMap[record.id] = record;
         this.onChange(Constants.UPDATE_CREATED, record.id);
@@ -126,7 +133,7 @@ export class MemoryDataChannel implements IDataChannel {
                 records = _.take(records, options.count);
             }
         }
-        callback(null, _.map(records, (record: IRecord) => record.id ));
+        callback(null, _.map(records, (record: IRecord) => options && options.getVersion ? record.id + ':' + record.version : record.id ));
     }
 
     getAllRecords(): IRecord[] {

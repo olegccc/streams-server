@@ -9,7 +9,8 @@ function testDatabase(create: () => IDataChannel) {
             var db = create();
             var record = {
                 id: 'id1',
-                field: 'field'
+                field: 'field',
+                version: 0
             };
             db.create(record, (error: Error, record?: IRecord) => {
                 expect(error).toBeFalsy();
@@ -17,6 +18,7 @@ function testDatabase(create: () => IDataChannel) {
                     expect(error).toBeFalsy();
                     expect(record.id).toBeDefined();
                     expect(record['_id']).not.toBeDefined();
+                    expect(record.version).toBeGreaterThan(0);
                     expect(ids).toEqual(['id1']);
                     done();
                 });
@@ -27,14 +29,19 @@ function testDatabase(create: () => IDataChannel) {
             var db = create();
             var record = {
                 id: 'id1',
-                field: 'field'
+                field: 'field',
+                version: 0
             };
+            var recordVersion = record.version;
             db.getVersion((error: Error, version?: string) => {
                 db.create(record, (error: Error, record?: IRecord) => {
                     expect(error).toBeFalsy();
+                    expect(record.version).toBeGreaterThan(recordVersion);
+                    recordVersion = record.version;
                     record['field'] = 'field2';
                     db.update(record, (error: Error, record?: IRecord) => {
                         expect(error).toBeFalsy();
+                        expect(record.version).toBeGreaterThan(recordVersion);
                         expect(record['_id']).not.toBeDefined();
                         expect(record['field']).toBe('field2');
                         db.getIds(null, null, (error: Error, ids: string[]) => {
@@ -96,6 +103,30 @@ function testDatabase(create: () => IDataChannel) {
                         expect(updates[1].version).toBeGreaterThan(updates[0].version);
                         done();
                     });
+                });
+            });
+        });
+    });
+
+    it('should return id:version pairs based on query configuration', (done) => {
+        var db = create();
+        var newRecord: any = <any> {
+            field: 'field'
+        };
+        db.create(<IRecord> newRecord, (error: Error, record: IRecord) => {
+            expect(error).toBeFalsy();
+            var id = record.id;
+            var version = record.version;
+
+            db.getIds(null, null, (error: Error, ids: string[]) => {
+                expect(error).toBeFalsy();
+                expect(ids).toEqual([id]);
+                db.getIds(null, {
+                    getVersion: true
+                }, (error: Error, ids: string[]) => {
+                    expect(error).toBeFalsy();
+                    expect(ids).toEqual([id + ':' + version]);
+                    done();
                 });
             });
         });

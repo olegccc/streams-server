@@ -34,9 +34,15 @@ export class NedbDatabaseDataChannel implements IDataChannel {
 
     getIds(filter: any, options: IQueryOptions, callback: (error: Error, ids?: string[]) => void) {
 
-        var find = this.db.find(this.getQuery(filter), {
+        var fieldsToGet: any = {
             _id: 1
-        });
+        };
+
+        if (options && options.getVersion) {
+            fieldsToGet.version = 1;
+        }
+
+        var find = this.db.find(this.getQuery(filter), fieldsToGet);
 
         if (options) {
             if (options.order) {
@@ -57,7 +63,7 @@ export class NedbDatabaseDataChannel implements IDataChannel {
             }
             var ids = [];
             _.each(docs, (doc: any) => {
-                ids.push(doc._id);
+                ids.push(options && options.getVersion ? doc._id + ':' + doc.version : doc._id);
             });
             callback(err, ids);
         });
@@ -83,6 +89,7 @@ export class NedbDatabaseDataChannel implements IDataChannel {
         var id = newRecord.id;
         delete newRecord.id;
         newRecord._id = id;
+        newRecord.version = this.getVersionId();
         this.db.update({ _id: id}, newRecord, (err: Error, updated: number) => {
             if (err) {
                 callback(err);
@@ -114,6 +121,7 @@ export class NedbDatabaseDataChannel implements IDataChannel {
             newRecord._id = newRecord.id;
             delete newRecord.id;
         }
+        newRecord.version = this.getVersionId();
         this.db.insert(newRecord, (err: Error, doc: any) => {
             if (err) {
                 callback(err);
