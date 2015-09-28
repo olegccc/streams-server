@@ -1,0 +1,3 @@
+interface IDataChannelConfiguration {
+    system: boolean;
+}

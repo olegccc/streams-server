@@ -14,7 +14,8 @@
     "build": {
       "outDir": "build",
       "src": [
-        "src/**/*.ts"
+        "src/**/*.ts",
+        "!src/**/I*.ts"
       ]
     }
   },

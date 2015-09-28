@@ -7,7 +7,7 @@ import { MemoryDataChannel } from '../dataChannels/MemoryDataChannel';
 
 describe('Stream Handler', () => {
     it('should handle request to get all record ids', (done) => {
-        var record: IRecord = {
+        var record: IRecord = <any>{
             id: 'xx'
         };
         var testChannel = new MemoryDataChannel([record]);
@@ -23,7 +23,7 @@ describe('Stream Handler', () => {
     });
 
     it('should get record by its id', (done) => {
-        var record = { id: 'abc ', field1: 'aaa'};
+        var record = <any> { id: 'abc ', field1: 'aaa'};
         var testChannel = new MemoryDataChannel([record]);
         var handler = new StreamHandler(testChannel);
         var request: IRequest = <any>{};
@@ -39,7 +39,7 @@ describe('Stream Handler', () => {
 
     describe('CRUD set', () => {
         it('should update (merge with existing) record for specified id', (done) => {
-            var record = {
+            var record = <any> {
                 id: 'def',
                 field1: 'kl;kl;'
             };
@@ -58,12 +58,12 @@ describe('Stream Handler', () => {
                 var responseRecord: any = response.record;
                 expect(responseRecord.field2).toBe(newField);
                 request.echo = false;
-                request.record = {
+                request.record = <any>{
                     id: record.id + 'aaa'
                 };
                 handler.processRequest(request, (response: IResponse) => {
                     expect(response.error).toBeDefined();
-                    request.record = {
+                    request.record = <any>{
                         id: record.id
                     };
                     handler.processRequest(request, (response: IResponse) => {
@@ -79,7 +79,7 @@ describe('Stream Handler', () => {
             var handler = new StreamHandler(testChannel);
             var request: IRequest = <any>{};
             request.command = Constants.COMMAND_CREATE;
-            var record = {
+            var record = <any>{
                 id: 'xxx',
                 field2: 'abc'
             };
@@ -98,7 +98,7 @@ describe('Stream Handler', () => {
         });
 
         it('should delete existing record', (done) => {
-            var record = {
+            var record = <any> {
                 id: 'x',
                 field: 'aaa'
             };
