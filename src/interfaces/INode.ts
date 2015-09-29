@@ -2,7 +2,5 @@
 
 interface INode extends IRecord {
     parentId: string;
-    name: string;
-    description: string;
     children: INode[];
 }

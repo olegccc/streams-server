@@ -127,8 +127,8 @@ function testDatabase(create: () => IDataChannel) {
                     ], (error: Error, records: IRecord[]) => {
                         expect(error).toBeFalsy();
                         expect(records.length).toBe(2);
-                        expect(_.includes(records, { id: newRecord1.id }));
-                        expect(_.includes(records, { id: newRecord2.id }));
+                        expect(_.find(records, { id: newRecord1.id })).toBeTruthy();
+                        expect(_.find(records, { id: newRecord2.id })).toBeTruthy();
                         done();
                     });
                 })

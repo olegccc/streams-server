@@ -1,6 +1,6 @@
 ///<reference path='../interfaces/INode.ts'/>
+///<reference path='../interfaces/IDataChannel.ts'/>
 
-import { DataStorage } from '../dataChannels/DataStorage';
 import { Constants } from '../interfaces/Constants';
 import _ = require('lodash');
 
@@ -14,8 +14,8 @@ export class SynchronizedTree {
     private records: INode[];
     private recordMap: { [key: string] : INode };
 
-    constructor(dataStorage: DataStorage) {
-        this.nodeChannel = dataStorage.getChannel(Constants.DATA_CHANNEL_NODES);
+    constructor(dataChannel: IDataChannel) {
+        this.nodeChannel = dataChannel;
         this.cacheUpdateInterval = Constants.DEFAULT_CACHE_UPDATE_INTERVAL;
         this.tree = null;
         this.lastUpdate = 0;
