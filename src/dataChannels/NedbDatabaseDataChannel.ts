@@ -84,6 +84,31 @@ export class NedbDatabaseDataChannel implements IDataChannel {
         });
     }
 
+    readMany(ids: string[], callback: (error: Error, records?: IRecord[]) => void) {
+
+        var searchCriteria = <any> {};
+        if (ids) {
+            searchCriteria._id = {
+                $in: ids
+            };
+        }
+
+        this.db.find(searchCriteria, (error: Error, docs: any[]) => {
+            if (error) {
+                callback(error);
+                return;
+            }
+            var records: IRecord[] = [];
+            _.each(docs, (doc: any) => {
+                var record = _.cloneDeep(doc);
+                record.id = record._id;
+                delete record._id;
+                records.push(record);
+            });
+            callback(error, records);
+        });
+    }
+
     update(record: IRecord, callback: (error: Error, record?: IRecord) => void) {
         var newRecord:any = _.cloneDeep(record);
         var id = newRecord.id;
@@ -140,6 +165,40 @@ export class NedbDatabaseDataChannel implements IDataChannel {
                     return;
                 }
                 callback(err, newRecord);
+            });
+        });
+    }
+
+    createMany(records: IRecord[], callback: (error: Error, records?: IRecord[]) => void) {
+        records = _.cloneDeep(records);
+        _.each(records, (record: any) => {
+            if (record.hasOwnProperty("id")) {
+                record._id = record.id;
+                delete record.id;
+            }
+            record.version = this.getVersionId();
+        });
+        this.db.insert(records, (error: Error, records: IRecord[]) => {
+            if (error) {
+                callback(error);
+                return;
+            }
+            var histories: any[] = [];
+            _.each(records, (record: any) => {
+                histories.push({
+                    created: this.getVersionId(),
+                    id: record.id,
+                    type: Constants.UPDATE_CREATED
+                });
+                record.id = record._id;
+                delete record._id;
+            });
+            this.versionDb.insert(histories, (error: Error) => {
+                if (error) {
+                    callback(error);
+                    return;
+                }
+                callback(error, records);
             });
         });
     }

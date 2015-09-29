@@ -106,6 +106,55 @@ function testDatabase(create: () => IDataChannel) {
                 });
             });
         });
+
+        it('should read many records', (done) => {
+            var db = create();
+            var newRecord1: any = <any> {
+                field: 'value1',
+                id: 'id1'
+            };
+            var newRecord2: any = <any> {
+                field: 'value2',
+                id: 'id2'
+            };
+            db.create(newRecord1, (error: Error) => {
+                expect(error).toBeFalsy();
+                db.create(newRecord2, (error: Error) => {
+                    expect(error).toBeFalsy();
+                    db.readMany([
+                        newRecord1.id,
+                        newRecord2.id
+                    ], (error: Error, records: IRecord[]) => {
+                        expect(error).toBeFalsy();
+                        expect(records.length).toBe(2);
+                        expect(_.includes(records, { id: newRecord1.id }));
+                        expect(_.includes(records, { id: newRecord2.id }));
+                        done();
+                    });
+                })
+            })
+        });
+
+        it('should create many records', (done) => {
+            var db = create();
+            var newRecord1: any = <any> {
+                field: 'value1',
+                id: 'id1'
+            };
+            var newRecord2: any = <any> {
+                field: 'value2',
+                id: 'id2'
+            };
+            db.createMany([newRecord1, newRecord2], (error: Error) => {
+                expect(error).toBeFalsy();
+                db.readMany(['id1', 'id2'], (error: Error, records: IRecord[]) => {
+                    expect(error).toBeFalsy();
+                    expect(_.includes(records, { id: 'id1'}));
+                    expect(_.includes(records, { id: 'id2'}));
+                    done();
+                });
+            });
+        });
     });
 
     it('should return id:version pairs based on query configuration', (done) => {

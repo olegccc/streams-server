@@ -27,6 +27,16 @@ export class MemoryDataChannel implements IDataChannel {
         callback(null, this.recordMap[id]);
     }
 
+    readMany(ids: string[], callback: (error: Error, records?: IRecord[]) => void): void {
+        var records: IRecord[];
+        if (!ids) {
+            records = this.records;
+        } else {
+            records = _.filter(this.records, (record: IRecord) => _.contains(ids, record.id));
+        }
+        callback(null, records);
+    }
+
     update(record: IRecord, callback: (error: Error, record?: IRecord) => void): void {
         var toMerge = _.find(this.records, { id: record.id });
 
@@ -42,7 +52,32 @@ export class MemoryDataChannel implements IDataChannel {
         callback(null, toMerge);
     }
 
-    create(record: IRecord, callback: (error: Error, record: IRecord) => void): void {
+    createMany(records: IRecord[], callback: (error: Error, records?: IRecord[]) => void) : void {
+        for (var i = 0; i < records.length; i++) {
+            var record = records[i];
+            this.createUniqueId(record);
+            if (this.recordMap.hasOwnProperty(record.id)) {
+                _.each(records, (record: IRecord) => {
+                    if (record.hasOwnProperty('id') && this.recordMap.hasOwnProperty(record.id)) {
+                        delete this.recordMap[record.id];
+                    }
+                });
+                callback(new Error("Record already exists"), null);
+                return;
+            }
+            this.recordMap[record.id] = record;
+            record.version = this.getVersionId();
+        }
+
+        _.each(records, (record: IRecord) => {
+            this.records.push(record);
+            this.onChange(Constants.UPDATE_CREATED, record.id);
+        });
+
+        callback(null, records);
+    }
+
+    private createUniqueId(record: IRecord) {
         if (!record.hasOwnProperty('id')) {
             for (;;) {
                 var id = (Date.now() + Math.random()*1000).toString();
@@ -52,6 +87,10 @@ export class MemoryDataChannel implements IDataChannel {
                 }
             }
         }
+    }
+
+    create(record: IRecord, callback: (error: Error, record: IRecord) => void): void {
+        this.createUniqueId(record);
         if (this.recordMap.hasOwnProperty(record.id)) {
             callback(new Error("Record already exists"), null);
             return;
