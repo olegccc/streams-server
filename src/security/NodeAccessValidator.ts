@@ -1,4 +1,5 @@
 ///<reference path='../interfaces/INodeAccess.ts'/>
+///<reference path='../interfaces/IUserGroupMembership.ts'/>
 
 import { SynchronizedTree } from '../structure/SynchronizedTree';
 import { SynchronizedDictionary } from '../structure/SynchronizedDictionary';
@@ -21,7 +22,7 @@ export class NodeAccessValidator {
             return userId === nodeAccess.userId;
         }
         if (nodeAccess.userGroupId) {
-            return groups && groups.hasOwnProperty(nodeAccess.userGroupId);
+            return groups.hasOwnProperty(nodeAccess.userGroupId);
         }
         return true;
     }
@@ -82,7 +83,7 @@ export class NodeAccessValidator {
                 return;
             }
             if (!userId) {
-                this.effectiveRightsForNode(node, userId, null, (error: Error, rights?: { [key: string]: boolean}) => {
+                this.effectiveRightsForNode(node, userId, {}, (error: Error, rights?: { [key: string]: boolean}) => {
                     if (error) {
                         callback(error);
                     } else {
@@ -96,8 +97,8 @@ export class NodeAccessValidator {
                         return;
                     }
                     var groups = <any>{};
-                    _.each(records, (record:IRecord) => {
-                        groups[record.id] = true;
+                    _.each(records, (record:IUserGroupMembership) => {
+                        groups[record.groupId] = true;
                     });
                     this.effectiveRightsForNode(node, userId, groups, (error: Error, rights?: { [key: string]: boolean}) => {
                         if (error) {

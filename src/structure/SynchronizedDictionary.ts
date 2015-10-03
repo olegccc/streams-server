@@ -126,7 +126,7 @@ export class SynchronizedDictionary {
                 callback(error);
                 return;
             }
-            callback(error, this.dictionary[key]);
+            callback(error, this.dictionary[key] || []);
         });
     }
 }

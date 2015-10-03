@@ -76,7 +76,7 @@ describe('Node Access Validator', () => {
 
                     var nodesTree = new SynchronizedTree(nodesChannel);
                     var rightsSet = new SynchronizedDictionary(rightsChannel, 'nodeId');
-                    var membershipSet = new SynchronizedDictionary(userMembershipChannel, 'groupId');
+                    var membershipSet = new SynchronizedDictionary(userMembershipChannel, 'userId');
 
                     var nodeAccessValidator = new NodeAccessValidator(nodesTree, rightsSet, membershipSet);
 
@@ -84,18 +84,18 @@ describe('Node Access Validator', () => {
                         expect(error).toBeFalsy();
                         expect(rights).toEqual(['right1']);
 
-                        done();
-                        //nodeAccessValidator.effectiveRights('user1', node2.id, (error: Error, rights: string[]) => {
-                        //    expect(error).toBeFalsy();
-                        //    expect(rights).toEqual(['right1', 'right2']);
-                        //
-                        //    nodeAccessValidator.effectiveRights('user2', node2.id, (error: Error, rights: string[]) => {
-                        //        expect(error).toBeFalsy();
-                        //        expect(rights).toEqual(['right2']);
-                        //
-                        //        done();
-                        //    });
-                        //});
+                        console.log(2);
+                        nodeAccessValidator.effectiveRights('user1', node2.id, (error: Error, rights: string[]) => {
+                            expect(error).toBeFalsy();
+                            expect(rights).toEqual(['right1', 'right2']);
+
+                            nodeAccessValidator.effectiveRights('user2', node2.id, (error: Error, rights: string[]) => {
+                                expect(error).toBeFalsy();
+                                expect(rights).toEqual(['right2']);
+
+                                done();
+                            });
+                        });
                     });
                 });
             });
