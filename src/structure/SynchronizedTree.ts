@@ -33,6 +33,7 @@ export class SynchronizedTree {
         this.recordMap[node.id] = node;
         if (node.children.length) {
             _.each(node.children, (child: INode) => {
+                child.parent = node;
                 this.fillChildren(child, treeMap);
             });
         }

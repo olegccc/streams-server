@@ -5,5 +5,6 @@ interface INodeAccess extends IRecord {
     order: number;
     userId?: string;
     userGroupId?: string;
+    rightId: string;
     allow: boolean;
 }

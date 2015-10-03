@@ -3,4 +3,5 @@
 interface INode extends IRecord {
     parentId: string;
     children: INode[];
+    parent: INode;
 }
