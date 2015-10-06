@@ -84,16 +84,20 @@ describe('Node Access Validator', () => {
                         expect(error).toBeFalsy();
                         expect(rights).toEqual(['right1']);
 
-                        console.log(2);
-                        nodeAccessValidator.effectiveRights('user1', node2.id, (error: Error, rights: string[]) => {
+                        nodeAccessValidator.effectiveRights(null, null, (error: Error, rights: string[]) => {
                             expect(error).toBeFalsy();
-                            expect(rights).toEqual(['right1', 'right2']);
+                            expect(rights).toEqual(['right1']);
 
-                            nodeAccessValidator.effectiveRights('user2', node2.id, (error: Error, rights: string[]) => {
+                            nodeAccessValidator.effectiveRights('user1', node2.id, (error: Error, rights: string[]) => {
                                 expect(error).toBeFalsy();
-                                expect(rights).toEqual(['right2']);
+                                expect(rights).toEqual(['right1', 'right2']);
 
-                                done();
+                                nodeAccessValidator.effectiveRights('user2', node2.id, (error: Error, rights: string[]) => {
+                                    expect(error).toBeFalsy();
+                                    expect(rights).toEqual(['right2']);
+
+                                    done();
+                                });
                             });
                         });
                     });

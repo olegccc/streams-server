@@ -19,6 +19,15 @@
       ]
     }
   },
+  "sync": {
+    "resources": {
+      "files": [{
+        "cwd": "src",
+        "src": ["**/*.{json,js,jpg,png,html}"],
+        "dest": "build"
+      }]
+    }
+  },
   "watch": {
     "options": {
       "atBegin": true
@@ -29,6 +38,14 @@
       ],
       "tasks": [
         "test"
+      ]
+    },
+    "resources": {
+      "files": [
+        "src/**/*.{json,js,jpg,png,html}"
+      ],
+      "tasks": [
+        "sync:resources"
       ]
     }
   }

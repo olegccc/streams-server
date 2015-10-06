@@ -11,6 +11,8 @@ export class Constants {
     static UPDATE_CREATED: number = 2;
     static UPDATE_CHANGED: number = 3;
 
+    static RANDOM_SEED_LENGTH = 128;
+
     static DATA_CHANNEL_NODES: string = '_nodes';
     static DATA_CHANNEL_NODE_ACCESS: string = '_node_access';
     static DATA_CHANNEL_OBJECTS: string = '_objects';

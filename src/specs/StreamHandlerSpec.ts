@@ -1,9 +1,40 @@
 ///<reference path='../interfaces/IRecord.ts'/>
+///<reference path='../interfaces/IDataChannel.ts'/>
 
 import { StreamHandler } from '../modules/StreamHandler';
 import { Constants } from '../interfaces/Constants';
 import _ = require('lodash');
 import { MemoryDataChannel } from '../dataChannels/MemoryDataChannel';
+import { NodeAccessValidator } from '../security/NodeAccessValidator';
+import { NedbDatabaseDataChannel } from '../dataChannels/NedbDatabaseDataChannel';
+import { SynchronizedTree } from '../structure/SynchronizedTree';
+import { SynchronizedDictionary } from '../structure/SynchronizedDictionary';
+
+function createNodeAccessValidator(nodesChannel?: IDataChannel, rightsChannel?: IDataChannel, membershipChannel?: IDataChannel): NodeAccessValidator {
+    if (!nodesChannel) {
+        nodesChannel = new NedbDatabaseDataChannel();
+    }
+    if (!rightsChannel) {
+        rightsChannel = new NedbDatabaseDataChannel();
+    }
+    if (!membershipChannel) {
+        membershipChannel = new NedbDatabaseDataChannel();
+    }
+    var nodesTree = new SynchronizedTree(nodesChannel);
+    var rightsSet = new SynchronizedDictionary(rightsChannel, 'nodeId');
+    var membershipSet = new SynchronizedDictionary(membershipChannel, 'userId');
+
+    return new NodeAccessValidator(nodesTree, rightsSet, membershipSet);
+}
+
+function createConfiguration(): IServerConfiguration {
+    return <any>{
+        access: {
+            read: ['read'],
+            write: ['read','write']
+        },
+    };
+}
 
 describe('Stream Handler', () => {
     it('should handle request to get all record ids', (done) => {
@@ -11,13 +42,16 @@ describe('Stream Handler', () => {
             id: 'xx'
         };
         var testChannel = new MemoryDataChannel([record]);
-        var handler = new StreamHandler(testChannel);
+        var handler = new StreamHandler(null, testChannel, createConfiguration());
         var request: IRequest = <any>{};
         request.command = Constants.COMMAND_IDS;
-        handler.processRequest(request, (response: IResponse) => {
-            expect(response.ids).toBeDefined();
-            expect(response.ids.length).toBe(1);
-            expect(response.ids[0]).toBe(record.id);
+        handler.processRequest(request, null, (error: Error, response: IResponse) => {
+            expect(error).toBeFalsy();
+            if (!error) {
+                expect(response.ids).toBeDefined();
+                expect(response.ids.length).toBe(1);
+                expect(response.ids[0]).toBe(record.id);
+            }
             done();
         });
     });
@@ -25,11 +59,12 @@ describe('Stream Handler', () => {
     it('should get record by its id', (done) => {
         var record = <any> { id: 'abc ', field1: 'aaa'};
         var testChannel = new MemoryDataChannel([record]);
-        var handler = new StreamHandler(testChannel);
+        var handler = new StreamHandler(null, testChannel, createConfiguration());
         var request: IRequest = <any>{};
         request.command = Constants.COMMAND_READ;
         request.id = record.id;
-        handler.processRequest(request, (response: IResponse) => {
+        handler.processRequest(request, null, (error: Error, response: IResponse) => {
+            expect(error).toBeFalsy();
             expect(response.record).toBeDefined();
             expect(response.record.id).toBe(record.id);
             expect((<any>(response.record)).field1).toBe(record.field1);
@@ -44,7 +79,7 @@ describe('Stream Handler', () => {
                 field1: 'kl;kl;'
             };
             var testChannel = new MemoryDataChannel([record]);
-            var handler = new StreamHandler(testChannel);
+            var handler = new StreamHandler(null, testChannel, createConfiguration());
             var request: IRequest = <any>{};
             request.command = Constants.COMMAND_UPDATE;
             request.echo = true;
@@ -53,7 +88,8 @@ describe('Stream Handler', () => {
                 id: record.id,
                 field2: newField
             };
-            handler.processRequest(request, (response: IResponse) => {
+            handler.processRequest(request, null, (error: Error, response: IResponse) => {
+                expect(error).toBeFalsy();
                 expect(response.record).toBeDefined();
                 var responseRecord: any = response.record;
                 expect(responseRecord.field2).toBe(newField);
@@ -61,12 +97,13 @@ describe('Stream Handler', () => {
                 request.record = <any>{
                     id: record.id + 'aaa'
                 };
-                handler.processRequest(request, (response: IResponse) => {
-                    expect(response.error).toBeDefined();
+                handler.processRequest(request, null, (error: Error) => {
+                    expect(error).toBeDefined();
                     request.record = <any>{
                         id: record.id
                     };
-                    handler.processRequest(request, (response: IResponse) => {
+                    handler.processRequest(request, null, (error: Error, response: IResponse) => {
+                        expect(error).toBeFalsy();
                         expect(response.record).toBe(true);
                         done();
                     });
@@ -76,7 +113,7 @@ describe('Stream Handler', () => {
 
         it('should create new record', (done) => {
             var testChannel = new MemoryDataChannel();
-            var handler = new StreamHandler(testChannel);
+            var handler = new StreamHandler(null, testChannel, createConfiguration());
             var request: IRequest = <any>{};
             request.command = Constants.COMMAND_CREATE;
             var record = <any>{
@@ -84,13 +121,13 @@ describe('Stream Handler', () => {
                 field2: 'abc'
             };
             request.record = record;
-            handler.processRequest(request, (response: IResponse) => {
-                expect(response.error).not.toBeDefined();
+            handler.processRequest(request, null, (error: Error) => {
+                expect(error).toBeFalsy();
                 var records = testChannel.getAllRecords();
                 expect(records.length).toBe(1);
                 expect(records[0]).toBe(record);
-                handler.processRequest(request, (response: IResponse) => {
-                    expect(response.error).toBeDefined();
+                handler.processRequest(request, null, (error: Error) => {
+                    expect(error).toBeDefined();
                     expect(testChannel.getAllRecords().length).toBe(1);
                     done();
                 });
@@ -103,16 +140,16 @@ describe('Stream Handler', () => {
                 field: 'aaa'
             };
             var testChannel = new MemoryDataChannel([record]);
-            var handler = new StreamHandler(testChannel);
+            var handler = new StreamHandler(null, testChannel, createConfiguration());
             var request: IRequest = <any>{};
             request.command = Constants.COMMAND_DELETE;
             request.id = 'xx';
-            handler.processRequest(request, (response: IResponse) => {
-                expect(response.error).toBeDefined();
+            handler.processRequest(request, null, (error: Error) => {
+                expect(error).toBeTruthy();
                 expect(testChannel.getAllRecords().length).toBe(1);
                 request.id = record.id;
-                handler.processRequest(request, (response: IResponse) => {
-                    expect(response.error).not.toBeDefined();
+                handler.processRequest(request, null, (error: Error) => {
+                    expect(error).toBeFalsy();
                     expect(testChannel.getAllRecords().length).toBe(0);
                     done();
                 });
@@ -124,12 +161,13 @@ describe('Stream Handler', () => {
         it('should notify on record changes and handle versions', (done) => {
 
             var testChannel = new MemoryDataChannel();
-            var handler = new StreamHandler(testChannel);
+            var handler = new StreamHandler(null, testChannel, createConfiguration());
             var request: IRequest = <any>{};
 
             // get version => initialVersion
             request.command = Constants.COMMAND_VERSION;
-            handler.processRequest(request, (response: IResponse) => {
+            handler.processRequest(request, null, (error: Error, response: IResponse) => {
+                expect(error).toBeFalsy();
                 expect(response.version).toBeDefined();
                 var initialVersion = response.version;
 
@@ -141,14 +179,14 @@ describe('Stream Handler', () => {
                 request = <any>{};
                 request.command = Constants.COMMAND_CREATE;
                 request.record = record;
-                handler.processRequest(request, (response: IResponse) => {
-                    expect(response.error).not.toBeDefined();
+                handler.processRequest(request, null, (error: Error) => {
+                    expect(error).toBeFalsy();
 
                     // get version => secondVersion
                     request = <any>{};
                     request.command = Constants.COMMAND_VERSION;
-                    handler.processRequest(request, (response: IResponse) => {
-                        expect(response.error).not.toBeDefined();
+                    handler.processRequest(request, null, (error: Error, response: IResponse) => {
+                        expect(error).toBeFalsy();
                         var createVersion = response.version;
                         expect(createVersion).toBeDefined();
                         expect(createVersion).not.toBe(initialVersion);
@@ -161,14 +199,14 @@ describe('Stream Handler', () => {
                             field2: '789'
                         };
                         request.echo = false;
-                        handler.processRequest(request, (response: IResponse) => {
-                            expect(response.error).not.toBeDefined();
+                        handler.processRequest(request, null, (error: Error) => {
+                            expect(error).toBeFalsy();
 
                             // get version and verify it is not equal to two previous ones
                             request = <any>{};
                             request.command = Constants.COMMAND_VERSION;
-                            handler.processRequest(request, (response: IResponse) => {
-                                expect(response.error).not.toBeDefined();
+                            handler.processRequest(request, null, (error: Error, response: IResponse) => {
+                                expect(error).toBeFalsy();
                                 var updateVersion = response.version;
                                 expect(updateVersion).toBeDefined();
                                 expect(updateVersion).not.toBe(initialVersion);
@@ -178,8 +216,8 @@ describe('Stream Handler', () => {
                                 request = <any>{};
                                 request.command = Constants.COMMAND_CHANGES;
                                 request.version = createVersion;
-                                handler.processRequest(request, (response: IResponse) => {
-                                    expect(response.error).not.toBeDefined();
+                                handler.processRequest(request, null, (error: Error, response: IResponse) => {
+                                    expect(error).toBeFalsy();
                                     expect(response.changes).toBeDefined();
                                     expect(response.changes.length).toBeGreaterThan(0);
                                     expect(response.changes[0].type).toBe(Constants.UPDATE_CHANGED);
@@ -188,15 +226,15 @@ describe('Stream Handler', () => {
                                     request = <any>{};
                                     request.command = Constants.COMMAND_DELETE;
                                     request.id = record.id;
-                                    handler.processRequest(request, (response: IResponse) => {
-                                        expect(response.error).not.toBeDefined();
+                                    handler.processRequest(request, null, (error: Error) => {
+                                        expect(error).toBeFalsy();
 
                                         // get changes and check that we receive report for deleted record
                                         request = <any>{};
                                         request.command = Constants.COMMAND_CHANGES;
                                         request.version = createVersion;
-                                        handler.processRequest(request, (response: IResponse) => {
-                                            expect(response.error).not.toBeDefined();
+                                        handler.processRequest(request, null, (error: Error, response: IResponse) => {
+                                            expect(error).toBeFalsy();
                                             expect(response.changes).toBeDefined();
                                             expect(response.changes.length).toBeGreaterThan(1);
                                             expect(_.last(response.changes).type).toBe(Constants.UPDATE_DELETED);
@@ -209,6 +247,183 @@ describe('Stream Handler', () => {
                     });
                 });
             });
+        });
+    });
+
+    describe('Security', () => {
+        it('should calculate access rights for anonymous and concrete user (root tree item access rights)', (done) => {
+            var nodesChannel = new NedbDatabaseDataChannel();
+            var rightsChannel = new NedbDatabaseDataChannel();
+            var rootNode = <any>{
+                id: 'root',
+                parentId: null,
+                description: 'root'
+            };
+            var right1 = <any> {
+                nodeId: rootNode.id,
+                order: 0,
+                userId: null,
+                userGroupId: null,
+                rightId: 'read',
+                allow: true
+            };
+            var right2 = <any> {
+                nodeId: rootNode.id,
+                order: 0,
+                userId: 'user1',
+                userGroupId: null,
+                rightId: 'write',
+                allow: true
+            };
+            nodesChannel.create(rootNode, (error: Error) => {
+                expect(error).toBeFalsy();
+                rightsChannel.createMany([right1, right2], (error: Error) => {
+                    expect(error).toBeFalsy();
+                    var validator = createNodeAccessValidator(nodesChannel, rightsChannel);
+                    var testChannel = new MemoryDataChannel();
+                    var handler = new StreamHandler(validator, testChannel, createConfiguration());
+                    var spy = spyOn(handler, "processRequestWithRights");
+                    spy.and.callThrough();
+                    var request: IRequest = <any>{};
+                    request.command = Constants.COMMAND_IDS;
+                    handler.processRequest(request, null, (error: Error) => {
+                        expect(error).toBeFalsy();
+                        if (error) {
+                            done();
+                            return;
+                        }
+                        expect(handler.processRequestWithRights).toHaveBeenCalled();
+                        request = spy.calls.argsFor(0)[0];
+                        expect(request.access).toEqual({ read: true });
+                        expect(request.rights).toEqual({ read: true });
+                        request = <any>{};
+                        request.command = Constants.COMMAND_IDS;
+                        var user: IUser = <any> {
+                            id: 'user1'
+                        };
+                        handler.processRequest(request, user, (error: Error) => {
+                            expect(error).toBeFalsy();
+                            if (!error) {
+                                request = spy.calls.argsFor(1)[0];
+                                expect(request.access).toEqual({ read: true, write: true });
+                                expect(request.rights).toEqual({ read: true, write: true });
+                            }
+                            done();
+                        });
+                    });
+                })
+            });
+        });
+
+        _.each([{
+            request: {
+                command: Constants.COMMAND_IDS
+            }
+        }, {
+            request: {
+                command: Constants.COMMAND_READ,
+                id: 'record1'
+            }
+        }, {
+            request: {
+                command: Constants.COMMAND_UPDATE,
+                record: {
+                    id: 'record1',
+                    field2: 'value'
+                }
+            },
+            write: true
+        }, {
+            request: {
+                command: Constants.COMMAND_CREATE,
+                record: {
+                    field: 'value'
+                }
+            },
+            write: true
+        }, {
+            request: {
+                command: Constants.COMMAND_DELETE,
+                id: 'record1'
+            },
+            write: true
+        }, {
+            request: {
+                command: Constants.COMMAND_VERSION
+            }
+        }, {
+            request: {
+                command: Constants.COMMAND_CHANGES,
+                version: null
+            }
+        }], (check: any) => {
+            it('should check access rights for \'' + check.request.command + '\' command', (done) => {
+                var record = <any> {
+                    id: 'record1',
+                    field: 'aaa'
+                };
+                var testChannel = new MemoryDataChannel([record]);
+                var rootNode = <any>{
+                    id: 'root',
+                    parentId: null,
+                    description: 'root'
+                };
+                var right1 = <any> {
+                    nodeId: rootNode.id,
+                    order: 0,
+                    userId: 'user1',
+                    userGroupId: null,
+                    rightId: 'read',
+                    allow: true
+                };
+                var right2 = <any> {
+                    nodeId: rootNode.id,
+                    order: 0,
+                    userId: 'user2',
+                    userGroupId: null,
+                    rightId: 'write',
+                    allow: true
+                };
+                var nodesChannel = new MemoryDataChannel([rootNode]);
+                var rightsChannel = new MemoryDataChannel([right1, right2]);
+                var validator = createNodeAccessValidator(nodesChannel, rightsChannel);
+                var handler = new StreamHandler(validator, testChannel, createConfiguration());
+
+                var user1: IUser = <any> {
+                    id: 'user1'
+                };
+
+                var user2: IUser = <any> {
+                    id: 'user2'
+                };
+
+                handler.processRequest(_.cloneDeep(check.request), null, (error: Error) => {
+                    expect(error).toBeTruthy();
+                    if (!error) {
+                        done();
+                        return;
+                    }
+                    if (check.write) {
+                        handler.processRequest(_.cloneDeep(check.request), user1, (error: Error) => {
+                            expect(error).toBeTruthy();
+                            if (!error) {
+                                done();
+                                return;
+                            }
+                            handler.processRequest(_.cloneDeep(check.request), user2, (error: Error) => {
+                                expect(error).toBeFalsy();
+                                done();
+                            });
+                        });
+                    } else {
+                        handler.processRequest(_.cloneDeep(check.request), user1, (error: Error) => {
+                            expect(error).toBeFalsy();
+                            done();
+                        });
+                    }
+                });
+            });
+
         });
     });
 });

@@ -33,6 +33,7 @@
     "grunt-contrib-requirejs": "^0.4.4",
     "grunt-contrib-uglify": "^0.9.1",
     "grunt-contrib-watch": "^0.6.1",
+    "grunt-sync": "^0.4.1",
     "grunt-ts": "^4.1.2",
     "grunt-tsd": "^0.1.0",
     "jasmine": "^2.3.2",

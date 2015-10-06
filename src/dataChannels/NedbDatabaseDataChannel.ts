@@ -206,9 +206,13 @@ export class NedbDatabaseDataChannel implements IDataChannel {
     remove(id: string, callback: (error: Error) => void) {
         this.db.remove({
             _id: id
-        }, {}, (error: Error) => {
+        }, {}, (error: Error, count: number) => {
             if (error) {
                 callback(error);
+                return;
+            }
+            if (!count) {
+                callback(new Error("No record found"));
                 return;
             }
             this.versionDb.insert({
@@ -220,12 +224,16 @@ export class NedbDatabaseDataChannel implements IDataChannel {
     }
 
     getVersion(callback: (error: Error, version?: string) => void) {
-        this.versionDb.find({}).sort({created: -1}).limit(1).exec((error, docs?: any[]) => {
-            if (error) {
-                callback(error);
-                return;
-            }
-            callback(error, docs.length ? docs[0].created.toString() : null);
+        this.versionDb
+            .find({})
+            .sort({created: -1})
+            .limit(1)
+            .exec((error, docs?: any[]) => {
+                if (error) {
+                    callback(error);
+                    return;
+                }
+                callback(error, docs.length ? docs[0].created.toString() : null);
         });
     }
 

@@ -1,0 +1,17 @@
+{
+  "access": {
+    "read": ["read","write","administrator"],
+    "write": ["write","administrator"]
+  },
+  "accessRightsList": [
+    "read", "write", "administrator"
+  ],
+  "database": {
+    "module": "dataChannels/NedbDatabaseDataChannel",
+    "configuration": {
+      "path": "db_files/"
+    }
+  },
+  "adminPanelPath": "admin",
+  "systemKey": "nothing"
+}
