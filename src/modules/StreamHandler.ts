@@ -1,4 +1,5 @@
 ///<reference path='../interfaces/IDataChannel.ts'/>
+///<reference path='../interfaces/IDataChannelFactory.ts'/>
 ///<reference path='../interfaces/IRequest.ts'/>
 ///<reference path='../interfaces/IResponse.ts'/>
 ///<reference path='../interfaces/IRecord.ts'/>
@@ -10,20 +11,50 @@ import { NodeAccessValidator } from '../security/NodeAccessValidator';
 import _ = require('lodash');
 
 export class StreamHandler {
-    private dataChannel: IDataChannel;
+    private dataChannelFactory: IDataChannelFactory;
     private nodeAccessValidator: NodeAccessValidator;
     private serverConfiguration: IServerConfiguration;
 
-    constructor(nodeAccessValidator: NodeAccessValidator, dataChannel: IDataChannel, serverConfiguration: IServerConfiguration) {
-        this.dataChannel = dataChannel;
+    constructor(nodeAccessValidator: NodeAccessValidator, dataChannelFactory: IDataChannelFactory, serverConfiguration: IServerConfiguration) {
+        this.dataChannelFactory = dataChannelFactory;
         this.nodeAccessValidator = nodeAccessValidator;
         this.serverConfiguration = serverConfiguration;
+    }
+
+    private processNextRequest(requests: IRequest[], responses: IResponse[], user: IUser, callback: (error: Error, responses?: IResponse[]) => void) {
+        this.processRequest(requests[0], user, (error: Error, response: IResponse) => {
+            if (error) {
+                callback(error);
+            } else {
+                responses.push(response);
+                if (requests.length === 1) {
+                    callback(null, responses);
+                } else {
+                    requests.splice(0, 1);
+                    this.processNextRequest(requests, responses, user, callback);
+                }
+            }
+        });
+    }
+
+    processRequests(requests: IRequest[], user: IUser, callback: (error: Error, responses?: IResponse[]) => void) {
+        if (requests.length === 0) {
+            callback(null, []);
+        } else {
+            this.processNextRequest(requests, [], user, callback);
+        }
     }
 
     processRequest(request: IRequest, user: IUser, callback: (error: Error, response?: IResponse) => void) {
 
         if (!this.nodeAccessValidator) {
-            this.processRequestWithRights(request, callback);
+            this.dataChannelFactory.getDataChannel(request.streamId, (error: Error, dataChannel?: IDataChannel) => {
+                if (error) {
+                    callback(error);
+                } else {
+                    this.processRequestWithRights(request, dataChannel, callback);
+                }
+            });
             return;
         }
 
@@ -43,7 +74,13 @@ export class StreamHandler {
                 })
             });
 
-            this.processRequestWithRights(request, callback);
+            this.dataChannelFactory.getDataChannel(request.streamId, (error: Error, dataChannel?: IDataChannel) => {
+                if (error) {
+                    callback(error);
+                } else {
+                    this.processRequestWithRights(request, dataChannel, callback);
+                }
+            });
         });
     }
 
@@ -66,50 +103,50 @@ export class StreamHandler {
         return this.checkAccess(request, 'write', callback);
     }
 
-    processRequestWithRights(request: IRequest, callback: (error: Error, response?: IResponse) => void){
+    processRequestWithRights(request: IRequest, dataChannel: IDataChannel, callback: (error: Error, response?: IResponse) => void){
         try {
             switch (request.command) {
                 case Constants.COMMAND_IDS:
                     if (!this.checkReadAccess(request, callback)) {
                         return;
                     }
-                    this.processCommandIds(callback);
+                    this.processCommandIds(dataChannel, callback);
                     return;
                 case Constants.COMMAND_READ:
                     if (!this.checkReadAccess(request, callback)) {
                         return;
                     }
-                    this.processRead(request.id, callback);
+                    this.processRead(request.id, dataChannel, callback);
                     return;
                 case Constants.COMMAND_UPDATE:
                     if (!this.checkWriteAccess(request, callback)) {
                         return;
                     }
-                    this.processUpdate(request.record, request.echo, callback);
+                    this.processUpdate(request.record, request.echo, dataChannel, callback);
                     return;
                 case Constants.COMMAND_CREATE:
                     if (!this.checkWriteAccess(request, callback)) {
                         return;
                     }
-                    this.processCreate(request.record, callback);
+                    this.processCreate(request.record, dataChannel, callback);
                     return;
                 case Constants.COMMAND_DELETE:
                     if (!this.checkWriteAccess(request, callback)) {
                         return;
                     }
-                    this.processDelete(request.id, callback);
+                    this.processDelete(request.id, dataChannel, callback);
                     return;
                 case Constants.COMMAND_VERSION:
                     if (!this.checkReadAccess(request, callback)) {
                         return;
                     }
-                    this.processVersion(callback);
+                    this.processVersion(dataChannel, callback);
                     return;
                 case Constants.COMMAND_CHANGES:
                     if (!this.checkReadAccess(request, callback)) {
                         return;
                     }
-                    this.processChanges(request.version, callback);
+                    this.processChanges(request.version, dataChannel, callback);
                     return;
             }
         } catch (error) {
@@ -120,8 +157,8 @@ export class StreamHandler {
         callback(new Error("Unknown command"));
     }
 
-    private processCommandIds(callback: (error: Error, response?: IResponse) => void): void {
-        this.dataChannel.getIds(null, null, (error: Error, ids) => {
+    private processCommandIds(dataChannel: IDataChannel, callback: (error: Error, response?: IResponse) => void): void {
+        dataChannel.getIds(null, null, (error: Error, ids) => {
             if (error) {
                 callback(error);
                 return;
@@ -132,9 +169,9 @@ export class StreamHandler {
         });
     }
 
-    private processRead(id: string, callback: (error: Error, response?: IResponse) => void): void {
+    private processRead(id: string, dataChannel: IDataChannel, callback: (error: Error, response?: IResponse) => void): void {
 
-        this.dataChannel.read(id, (error: Error, record: IRecord) => {
+        dataChannel.read(id, (error: Error, record: IRecord) => {
             if (error) {
                 callback(error);
                 return;
@@ -145,9 +182,9 @@ export class StreamHandler {
         });
     }
 
-    private processUpdate(record: IRecord, echo: boolean, callback: (error: Error, response?: IResponse) => void): void {
+    private processUpdate(record: IRecord, echo: boolean, dataChannel: IDataChannel, callback: (error: Error, response?: IResponse) => void): void {
 
-        this.dataChannel.update(record, (error: Error, record: IRecord) => {
+        dataChannel.update(record, (error: Error, record: IRecord) => {
             if (error) {
                 callback(error);
                 return;
@@ -158,9 +195,9 @@ export class StreamHandler {
         });
     }
 
-    private processCreate(record: IRecord, callback: (error: Error, response?: IResponse) => void): void {
+    private processCreate(record: IRecord, dataChannel: IDataChannel, callback: (error: Error, response?: IResponse) => void): void {
 
-        this.dataChannel.create(record, (error: Error) => {
+        dataChannel.create(record, (error: Error) => {
             if (error) {
                 callback(error);
                 return;
@@ -169,9 +206,9 @@ export class StreamHandler {
         });
     }
 
-    private processDelete(id: string, callback: (error: Error, response?: IResponse) => void): void {
+    private processDelete(id: string, dataChannel: IDataChannel, callback: (error: Error, response?: IResponse) => void): void {
 
-        this.dataChannel.remove(id, (error: Error) => {
+        dataChannel.remove(id, (error: Error) => {
             if (error) {
                 callback(error);
                 return;
@@ -180,8 +217,8 @@ export class StreamHandler {
         });
     }
 
-    private processVersion(callback: (error: Error, response?: IResponse) => void): void {
-        this.dataChannel.getVersion((error: Error, version: string) => {
+    private processVersion(dataChannel: IDataChannel, callback: (error: Error, response?: IResponse) => void): void {
+        dataChannel.getVersion((error: Error, version: string) => {
             if (error) {
                 callback(error);
                 return;
@@ -192,9 +229,9 @@ export class StreamHandler {
         });
     }
 
-    private processChanges(version: string, callback: (error: Error, response?: IResponse) => void): void {
+    private processChanges(version: string, dataChannel: IDataChannel, callback: (error: Error, response?: IResponse) => void): void {
 
-        this.dataChannel.getUpdates(version, null, null, (error: Error, updates: IUpdate[]) => {
+        dataChannel.getUpdates(version, null, null, (error: Error, updates: IUpdate[]) => {
             if (error) {
                 callback(error);
                 return;

@@ -8,7 +8,6 @@ module.exports = function (grunt) {
     grunt.loadNpmTasks('grunt-sync');
 
     grunt.config.init(grunt.file.readJSON('./config/grunt.config.json'));
-    grunt.task.loadTasks('grunt-tasks');
 
     grunt.registerTask('jasmine', function() {
         var done = this.async();

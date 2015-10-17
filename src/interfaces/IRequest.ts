@@ -1,6 +1,7 @@
 interface IRequest {
     command: string;
     id: string;
+    streamId: string;
     record: IRecord;
     echo: boolean;
     version: string;
