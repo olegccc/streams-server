@@ -110,7 +110,7 @@ export class StreamHandler {
                     if (!this.checkReadAccess(request, callback)) {
                         return;
                     }
-                    this.processCommandIds(dataChannel, callback);
+                    this.processCommandIds(request.filter, request.options, dataChannel, callback);
                     return;
                 case Constants.COMMAND_READ:
                     if (!this.checkReadAccess(request, callback)) {
@@ -128,7 +128,7 @@ export class StreamHandler {
                     if (!this.checkWriteAccess(request, callback)) {
                         return;
                     }
-                    this.processCreate(request.record, dataChannel, callback);
+                    this.processCreate(request.record, request.echo, dataChannel, callback);
                     return;
                 case Constants.COMMAND_DELETE:
                     if (!this.checkWriteAccess(request, callback)) {
@@ -146,7 +146,7 @@ export class StreamHandler {
                     if (!this.checkReadAccess(request, callback)) {
                         return;
                     }
-                    this.processChanges(request.version, dataChannel, callback);
+                    this.processChanges(request.version, request.filter, request.options, dataChannel, callback);
                     return;
             }
         } catch (error) {
@@ -157,8 +157,8 @@ export class StreamHandler {
         callback(new Error("Unknown command"));
     }
 
-    private processCommandIds(dataChannel: IDataChannel, callback: (error: Error, response?: IResponse) => void): void {
-        dataChannel.getIds(null, null, (error: Error, ids) => {
+    private processCommandIds(filter: any, options: IQueryOptions, dataChannel: IDataChannel, callback: (error: Error, response?: IResponse) => void): void {
+        dataChannel.getIds(filter, options, (error: Error, ids) => {
             if (error) {
                 callback(error);
                 return;
@@ -195,14 +195,16 @@ export class StreamHandler {
         });
     }
 
-    private processCreate(record: IRecord, dataChannel: IDataChannel, callback: (error: Error, response?: IResponse) => void): void {
+    private processCreate(record: IRecord, echo: boolean, dataChannel: IDataChannel, callback: (error: Error, response?: IResponse) => void): void {
 
-        dataChannel.create(record, (error: Error) => {
+        dataChannel.create(record, (error: Error, record?: IRecord) => {
             if (error) {
                 callback(error);
                 return;
             }
-            callback(null, <any>{});
+            var response = <IResponse>{};
+            response.record = echo ? record : <IRecord>{ id: record.id };
+            callback(null, response);
         });
     }
 
@@ -229,9 +231,9 @@ export class StreamHandler {
         });
     }
 
-    private processChanges(version: string, dataChannel: IDataChannel, callback: (error: Error, response?: IResponse) => void): void {
+    private processChanges(version: string, filter: any, options: IQueryOptions, dataChannel: IDataChannel, callback: (error: Error, response?: IResponse) => void): void {
 
-        dataChannel.getUpdates(version, null, null, (error: Error, updates: IUpdate[]) => {
+        dataChannel.getUpdates(version, filter, options, (error: Error, updates: IUpdate[]) => {
             if (error) {
                 callback(error);
                 return;
