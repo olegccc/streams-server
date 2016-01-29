@@ -26,7 +26,14 @@ export class StreamHandler {
             if (error) {
                 callback(error);
             } else {
-                responses.push(response);
+                if (requests[0].command === Constants.COMMAND_CHANGES) {
+                    if (response.changes.length > 0) {
+                        response.streamId = requests[0].streamId;
+                        responses.push(response);
+                    }
+                } else {
+                    responses.push(response);
+                }
                 if (requests.length === 1) {
                     callback(null, responses);
                 } else {

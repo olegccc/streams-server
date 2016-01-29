@@ -3,6 +3,7 @@
 
 interface IResponse {
     ids: string[];
+    streamId: string;
     record: IRecord;
     version: string;
     changes: IUpdate[];
