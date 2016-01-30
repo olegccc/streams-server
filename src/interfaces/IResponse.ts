@@ -4,6 +4,7 @@
 interface IResponse {
     ids: string[];
     streamId: string;
+    nodeId: string;
     record: IRecord;
     version: string;
     changes: IUpdate[];

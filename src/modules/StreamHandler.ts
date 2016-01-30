@@ -29,6 +29,7 @@ export class StreamHandler {
                 if (requests[0].command === Constants.COMMAND_CHANGES) {
                     if (response.changes.length > 0) {
                         response.streamId = requests[0].streamId;
+                        response.nodeId = requests[0].nodeId;
                         responses.push(response);
                     }
                 } else {
